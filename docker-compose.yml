@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  aegissoar:
+    build: .
+    container_name: aegissoar_platform
+    ports:
+      - "8000:8000"
+    environment:
+      - AEGIS_FIREWALL_SIMULATION=true
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+    volumes:
+      - aegis_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  aegis_data:

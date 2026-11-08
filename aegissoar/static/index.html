@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AegisSOAR // Security Operations & Automated Incident Response</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <div class="logo-group">
+        <span class="shield-icon">🛡️</span>
+        <div>
+          <div class="brand-title">AEGIS // SOAR</div>
+          <div class="brand-subtitle">CYBER DEFENSE &amp; AUTOMATED INCIDENT RESPONSE</div>
+        </div>
+        <div class="status-badge">
+          <span class="pulse-dot"></span>
+          <span>LIVE MONITORING</span>
+          <span id="wsStatus" style="font-size: 0.68rem; margin-left: 4px; color: #10b981;">CONNECTED</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnSimulator" class="btn btn-primary">⚔️ Adversary Simulator</button>
+        <button id="btnFirewall" class="btn btn-secondary">🛡️ Quarantine List</button>
+        <button id="btnAudioToggle" class="btn btn-secondary">🔇 Sound: OFF</button>
+        <a href="/docs" target="_blank" class="btn btn-secondary" style="text-decoration: none;">📖 API Docs</a>
+      </div>
+    </header>
+
+    <section class="kpi-strip">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Ingested Events</div>
+        <div id="metricTotalEvents" class="kpi-value">0</div>
+        <div class="kpi-subtext">Real-time syslog &amp; HTTP telemetry</div>
+      </div>
+      <div class="kpi-card warning">
+        <div class="kpi-label">Active Incidents</div>
+        <div id="metricActiveIncidents" class="kpi-value">0</div>
+        <div class="kpi-subtext">Requiring SOC triage &amp; review</div>
+      </div>
+      <div class="kpi-card critical">
+        <div class="kpi-label">Critical Incidents</div>
+        <div id="metricCritical" class="kpi-value">0</div>
+        <div class="kpi-subtext">High-confidence threat correlations</div>
+      </div>
+      <div class="kpi-card success">
+        <div class="kpi-label">Quarantined IPs</div>
+        <div id="metricBlockedIPs" class="kpi-value">0</div>
+        <div class="kpi-subtext">Automated firewall active containment</div>
+      </div>
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>🌐 Global Threat Origin &amp; Attack Vector Map</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-cyan);">
+            Real-time GeoIP Telemetry
+          </div>
+        </div>
+        <div class="panel-body" style="padding: 10px;">
+          <div id="threatMap"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>🎯 MITRE ATT&amp;CK Tactics</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
+            Coverage Profile
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="mitreBars" class="mitre-list">
+            <div style="color: var(--text-muted); font-size: 0.8rem; font-family: var(--font-mono); text-align: center; padding-top: 40px;">
+              Awaiting security event correlations...
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lower-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>⚡ Live Security Event Stream</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
+            WebSocket Ingestion Feed
+          </div>
+        </div>
+        <div class="panel-body" style="padding: 10px;">
+          <div id="terminalLogs" class="terminal-window">
+            <div class="terminal-line INFO">
+              <span class="term-ts">[SYSTEM]</span>
+              <span class="term-svc">aegis-core:</span>
+              <span class="term-msg">AegisSOAR Engine initialized. Ready to process security telemetry.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>🚨 Incident Triage &amp; SOAR Queue</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
+            Click case to investigate
+          </div>
+        </div>
+        <div class="panel-body" style="padding: 10px;">
+          <div id="incidentList" class="incident-list">
+            <div style="color: var(--text-muted); font-size: 0.8rem; font-family: var(--font-mono); text-align: center; padding-top: 40px;">
+              No open incidents detected yet.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="incidentModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle" style="font-size: 1rem; color: #fff;">Case File Investigation</h3>
+        <button class="close-btn" onclick="closeModal('incidentModal')">&times;</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalFooter" class="modal-footer"></div>
+    </div>
+  </div>
+
+  <div id="simulatorModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1rem; color: #fff;">⚔️ Adversary Attack Simulator</h3>
+        <button class="close-btn" onclick="closeModal('simulatorModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-muted); font-size: 0.82rem; line-height: 1.5;">
+          Launch realistic cyber attacks on-demand to demonstrate AegisSOAR's real-time detection rules, threat intelligence scoring, and automated playbook containment.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 6px;">
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--bg-card-border); padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #fff; font-size: 0.86rem;">1. SSH Credential Brute-Force</strong>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+                MITRE T1110.001 • German Tor Exit Node (185.220.101.5)
+              </div>
+            </div>
+            <button id="sim-ssh_bruteforce" class="btn btn-primary" onclick="launchSimulation('ssh_bruteforce')">Launch</button>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--bg-card-border); padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #fff; font-size: 0.86rem;">2. Web SQL Injection (SQLi)</strong>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+                MITRE T1190 • Automated Botnet Host (103.251.167.20)
+              </div>
+            </div>
+            <button id="sim-sqli_attack" class="btn btn-danger" onclick="launchSimulation('sqli_attack')">Launch</button>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--bg-card-border); padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #fff; font-size: 0.86rem;">3. Web Recon &amp; Directory Fuzzing</strong>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+                MITRE T1595.002 • ShadowScanner Host (45.33.32.156)
+              </div>
+            </div>
+            <button id="sim-recon_fuzzing" class="btn btn-secondary" onclick="launchSimulation('recon_fuzzing')">Launch</button>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--bg-card-border); padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #fff; font-size: 0.86rem;">4. Cobalt Strike / C2 Beaconing</strong>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+                MITRE T1071.001 • Russian Bulletproof Host (194.26.29.112)
+              </div>
+            </div>
+            <button id="sim-c2_beacon" class="btn btn-danger" onclick="launchSimulation('c2_beacon')">Launch</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('simulatorModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="firewallModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1rem; color: #fff;">🛡️ Active Firewall Quarantine (Blocklist)</h3>
+        <button class="close-btn" onclick="closeModal('firewallModal')">&times;</button>
+      </div>
+      <div id="firewallModalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('firewallModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/static/js/map.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

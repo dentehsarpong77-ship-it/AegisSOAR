@@ -1,0 +1,49 @@
+playbooks:
+  - id: "PB_CONTAIN_IP_QUARANTINE"
+    name: "Automated Attacker IP Quarantine"
+    description: "Instantly adds the attacking IP to the active firewall blocklist, revokes sessions, and queues a 3600-second quarantine hold."
+    trigger: "AUTOMATIC"
+    actions:
+      - type: "FIREWALL_BLOCK"
+        params:
+          ttl_seconds: 3600
+          reason: "Automated SOAR quarantine triggered by correlation rule"
+      - type: "DISPATCH_WEBHOOK"
+        params:
+          channel: "soc-critical-alerts"
+      - type: "CAPTURE_FORENSICS"
+        params:
+          window_hours: 24
+
+  - id: "PB_SOC_DISPATCH_ALERT"
+    name: "SOC Alert Notification & Triage"
+    description: "Formats incident context, geo-location, and MITRE mapping and notifies the on-call SOC team."
+    trigger: "AUTOMATIC"
+    actions:
+      - type: "DISPATCH_WEBHOOK"
+        params:
+          channel: "soc-triage"
+      - type: "LOG_AUDIT"
+        params:
+          message: "Alert logged for tier-1 analyst review"
+
+  - id: "PB_ACCOUNT_LOCKOUT"
+    name: "Compromised Account Containment"
+    description: "Temporarily locks the targeted user account and revokes active authentication tokens."
+    trigger: "AUTOMATIC"
+    actions:
+      - type: "LOCK_USER"
+        params:
+          duration_minutes: 60
+      - type: "DISPATCH_WEBHOOK"
+        params:
+          channel: "identity-alerts"
+
+  - id: "PB_FORENSIC_TRIAGE"
+    name: "Deep Forensic Log Export"
+    description: "Extracts complete chronological log artifact for the subject and compiles an incident brief."
+    trigger: "MANUAL"
+    actions:
+      - type: "CAPTURE_FORENSICS"
+        params:
+          window_hours: 72

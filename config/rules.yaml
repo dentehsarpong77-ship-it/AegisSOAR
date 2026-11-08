@@ -1,0 +1,109 @@
+rules:
+  - id: "RULE_SSH_BRUTE_FORCE"
+    name: "SSH Brute-Force Password Guessing"
+    description: "Detects multiple failed authentication attempts against SSH service from a single source IP."
+    mitre_attack:
+      tactic: "Credential Access"
+      technique: "T1110.001"
+      name: "Brute Force: Password Guessing"
+    severity: "HIGH"
+    event_type: "auth"
+    match:
+      status: "FAILURE"
+      service: "sshd"
+    threshold:
+      count: 4
+      window_seconds: 60
+      group_by: "source_ip"
+    auto_playbook: "PB_CONTAIN_IP_QUARANTINE"
+
+  - id: "RULE_SQL_INJECTION"
+    name: "Web Application SQL Injection (SQLi)"
+    description: "Detects common SQL injection signatures in web requests targeting application endpoints."
+    mitre_attack:
+      tactic: "Initial Access"
+      technique: "T1190"
+      name: "Exploit Public-Facing Application"
+    severity: "CRITICAL"
+    event_type: "http"
+    patterns:
+      - "(?i)(union(\\s+all)?\\s+select)"
+      - "(?i)('\\s*(or|and)\\s*('|\"|[0-9])=[0-9])"
+      - "(?i)(sleep\\([0-9]+\\)|benchmark\\([0-9]+)"
+      - "(?i)(select\\s+.*\\s+from\\s+information_schema)"
+      - "(?i)(drop\\s+table|insert\\s+into|waitfor\\s+delay)"
+    threshold:
+      count: 1
+      window_seconds: 30
+      group_by: "source_ip"
+    auto_playbook: "PB_CONTAIN_IP_QUARANTINE"
+
+  - id: "RULE_PATH_TRAVERSAL"
+    name: "Directory / Path Traversal Attack"
+    description: "Detects attempts to access unauthorized files outside the web root (e.g., /etc/passwd)."
+    mitre_attack:
+      tactic: "Discovery"
+      technique: "T1083"
+      name: "File and Directory Discovery"
+    severity: "HIGH"
+    event_type: "http"
+    patterns:
+      - "(\\.\\./|\\.\\.\\\\){2,}"
+      - "(?i)(/etc/passwd|/etc/shadow|/windows/win\\.ini|cmd\\.exe)"
+    threshold:
+      count: 1
+      window_seconds: 30
+      group_by: "source_ip"
+    auto_playbook: "PB_CONTAIN_IP_QUARANTINE"
+
+  - id: "RULE_DIR_BRUTE_FORCE"
+    name: "Web Reconnaissance & Vulnerability Scanning"
+    description: "High volume of 404 responses indicating automated directory/endpoint fuzzing (e.g., Nikto, Gobuster)."
+    mitre_attack:
+      tactic: "Reconnaissance"
+      technique: "T1595.002"
+      name: "Active Scanning: Vulnerability Scanning"
+    severity: "MEDIUM"
+    event_type: "http"
+    match:
+      status_code: 404
+    threshold:
+      count: 6
+      window_seconds: 30
+      group_by: "source_ip"
+    auto_playbook: "PB_SOC_DISPATCH_ALERT"
+
+  - id: "RULE_C2_BEACONING"
+    name: "Suspicious C2 / Malicious External Communication"
+    description: "Detects traffic outbound to known Command-and-Control endpoints or Tor exit nodes."
+    mitre_attack:
+      tactic: "Command and Control"
+      technique: "T1071.001"
+      name: "Application Layer Protocol: Web Protocols"
+    severity: "CRITICAL"
+    event_type: "network"
+    match:
+      protocol: "c2"
+    threshold:
+      count: 1
+      window_seconds: 60
+      group_by: "source_ip"
+    auto_playbook: "PB_CONTAIN_IP_QUARANTINE"
+
+  - id: "RULE_SUDO_PRIV_ESC"
+    name: "Unauthorized Sudo Privilege Escalation Attempt"
+    description: "Detects failed attempts to execute commands using sudo privileges."
+    mitre_attack:
+      tactic: "Privilege Escalation"
+      technique: "T1548.003"
+      name: "Abuse Elevation Control Mechanism: Sudo and Sudo Caching"
+    severity: "HIGH"
+    event_type: "auth"
+    match:
+      status: "FAILURE"
+      service: "sudo"
+    threshold:
+      count: 2
+      window_seconds: 120
+      group_by: "username"
+    auto_playbook: "PB_ACCOUNT_LOCKOUT"
