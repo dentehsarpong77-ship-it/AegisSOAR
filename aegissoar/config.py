@@ -11,11 +11,13 @@ STATIC_DIR = BASE_DIR / "aegissoar" / "static"
 DATA_DIR.mkdir(exist_ok=True)
 
 DB_PATH = os.getenv("AEGIS_DB_PATH", str(DATA_DIR / "aegis.db"))
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 RULES_FILE = CONFIG_DIR / "rules.yaml"
 PLAYBOOKS_FILE = CONFIG_DIR / "playbooks.yaml"
 
 ABUSEIPDB_API_KEY = os.getenv("ABUSEIPDB_API_KEY", "")
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 FIREWALL_SIMULATION_MODE = os.getenv("AEGIS_FIREWALL_SIMULATION", "true").lower() == "true"
 WEBHOOK_ALERT_URL = os.getenv("AEGIS_WEBHOOK_URL", "")

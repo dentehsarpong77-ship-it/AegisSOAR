@@ -26,24 +26,28 @@ class DetectionEngine:
             if patterns:
                 self._compiled_patterns[rule["id"]] = [re.compile(p, re.IGNORECASE) for p in patterns]
 
-    async def process_event(self, event: SecurityEvent) -> Optional[Incident]:
+    async def process_event(self, event: SecurityEvent, organization_id: Optional[str] = None) -> Optional[Incident]:
         if not event.id:
             event.id = f"evt_{uuid.uuid4().hex[:12]}"
 
-        insert_event(event)
+        org_id = organization_id or getattr(event, 'organization_id', 'org_default')
+        event.organization_id = org_id
+
+        insert_event(event, organization_id=org_id)
 
         if self.broadcast_callback:
-            await self.broadcast_callback("RAW_LOG", event.model_dump(mode="json"))
+            await self.broadcast_callback("RAW_LOG", event.model_dump(mode="json"), org_id)
 
         triggered_incident = None
 
         for rule in self.rules:
             if self._matches_rule(rule, event):
-                incident = await self._handle_rule_trigger(rule, event)
+                incident = await self._handle_rule_trigger(rule, event, org_id)
                 if incident:
                     triggered_incident = incident
 
         return triggered_incident
+
 
     def _matches_rule(self, rule: Dict[str, Any], event: SecurityEvent) -> bool:
         if rule.get("event_type") and rule["event_type"] != event.event_type:
@@ -80,7 +84,7 @@ class DetectionEngine:
 
         return len(history) >= required_count
 
-    async def _handle_rule_trigger(self, rule: Dict[str, Any], event: SecurityEvent) -> Incident:
+    async def _handle_rule_trigger(self, rule: Dict[str, Any], event: SecurityEvent, organization_id: str) -> Incident:
         rule_id = rule["id"]
         group_by = rule.get("threshold", {}).get("group_by", "source_ip")
         group_val = getattr(event, group_by, None) or event.source_ip
@@ -94,7 +98,7 @@ class DetectionEngine:
         intel = await lookup_ip_reputation(event.source_ip)
 
         if existing_id:
-            existing_data = get_incident_by_id(existing_id)
+            existing_data = get_incident_by_id(existing_id, organization_id=organization_id)
             if existing_data and existing_data["status"] not in ["RESOLVED", "FALSE_POSITIVE"]:
                 incident = Incident(
                     id=existing_id,
@@ -114,11 +118,12 @@ class DetectionEngine:
                     created_at=datetime.fromisoformat(existing_data["created_at"]),
                     updated_at=now,
                     notes=existing_data.get("notes", []),
-                    playbook_executions=existing_data.get("playbook_executions", [])
+                    playbook_executions=existing_data.get("playbook_executions", []),
+                    organization_id=organization_id
                 )
-                save_incident(incident)
+                save_incident(incident, organization_id=organization_id)
                 if self.broadcast_callback:
-                    await self.broadcast_callback("INCIDENT_UPDATED", incident.model_dump(mode="json"))
+                    await self.broadcast_callback("INCIDENT_UPDATED", incident.model_dump(mode="json"), organization_id)
                 return incident
 
         incident_id = f"inc_{uuid.uuid4().hex[:8]}"
@@ -147,22 +152,24 @@ class DetectionEngine:
             threat_intel=intel,
             created_at=now,
             updated_at=now,
-            notes=[f"Incident automatically raised by rule {rule_id}"]
+            notes=[f"Incident automatically raised by rule {rule_id}"],
+            organization_id=organization_id
         )
 
-        save_incident(incident)
+        save_incident(incident, organization_id=organization_id)
 
         auto_pb = rule.get("auto_playbook")
         if auto_pb:
             exec_record = await playbook_engine.execute_playbook(auto_pb, incident)
             incident.playbook_executions.append(exec_record.id)
             incident.status = "CONTAINED"
-            save_incident(incident)
+            save_incident(incident, organization_id=organization_id)
 
         if self.broadcast_callback:
-            await self.broadcast_callback("INCIDENT_CREATED", incident.model_dump(mode="json"))
+            await self.broadcast_callback("INCIDENT_CREATED", incident.model_dump(mode="json"), organization_id)
 
         return incident
+
 
 
 detection_engine = DetectionEngine()

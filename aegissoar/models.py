@@ -20,6 +20,7 @@ class SecurityEvent(BaseModel):
     message: str
     raw_payload: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    organization_id: Optional[str] = "org_default"
 
 
 class LogIngestRequest(BaseModel):
@@ -67,6 +68,7 @@ class Incident(BaseModel):
     updated_at: datetime = Field(default_factory=utc_now)
     notes: List[str] = Field(default_factory=list)
     playbook_executions: List[str] = Field(default_factory=list)
+    organization_id: Optional[str] = "org_default"
 
 
 class IncidentUpdateRequest(BaseModel):
@@ -99,3 +101,37 @@ class SimulationRequest(BaseModel):
     scenario: str
     attacker_ip: Optional[str] = None
     intensity: int = 5
+
+
+class UserRegisterRequest(BaseModel):
+    organization_name: str
+    full_name: str
+    email: str
+    username: str
+    password: str
+
+
+class OrganizationModel(BaseModel):
+    id: str
+    name: str
+    slug: str
+    owner_user_id: str
+    status: str = "active"
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class MembershipModel(BaseModel):
+    id: str
+    organization_id: str
+    user_id: str
+    role: str  # owner, security_admin, analyst, viewer
+    status: str = "active"
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class InvitationCreateModel(BaseModel):
+    email: str
+    role: str = "analyst"
+

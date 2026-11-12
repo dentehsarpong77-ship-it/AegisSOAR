@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from aegissoar.core.simulator import simulator
 from aegissoar.db import get_dashboard_metrics, get_playbook_executions
 from aegissoar.models import SimulationRequest
+from aegissoar.core.security import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["Simulation & Telemetry"])
 
@@ -16,8 +17,9 @@ async def trigger_attack_simulation(request: SimulationRequest):
 
 
 @router.get("/metrics")
-async def get_metrics():
-    return get_dashboard_metrics()
+async def get_metrics(current_user: dict = Depends(get_current_user)):
+    organization_id = current_user.get("organization_id")
+    return get_dashboard_metrics(organization_id=organization_id)
 
 
 @router.get("/playbooks/executions")

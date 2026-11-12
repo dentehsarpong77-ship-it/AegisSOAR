@@ -10,9 +10,30 @@ services:
       - AEGIS_FIREWALL_SIMULATION=true
       - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
       - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - DATABASE_URL=postgresql://${AEGIS_DB_USER:-aegis_user}:${AEGIS_DB_PASSWORD:-aegis_password}@db:5432/aegis_db
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - aegis_data:/app/data
     restart: unless-stopped
 
+  db:
+    image: postgres:15-alpine
+    container_name: aegissoar_db
+    environment:
+      POSTGRES_USER: ${AEGIS_DB_USER:-aegis_user}
+      POSTGRES_PASSWORD: ${AEGIS_DB_PASSWORD:-aegis_password}
+      POSTGRES_DB: aegis_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis_user -d aegis_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   aegis_data:
+  postgres_data:
+

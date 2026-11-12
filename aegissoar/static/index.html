@@ -8,129 +8,201 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="/static/css/leaflet.css">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
   <div class="app-container">
-    <header>
+    <header class="topbar">
       <div class="logo-group">
         <span class="shield-icon">🛡️</span>
         <div>
           <div class="brand-title">AEGIS // SOAR</div>
-          <div class="brand-subtitle">CYBER DEFENSE &amp; AUTOMATED INCIDENT RESPONSE</div>
-        </div>
-        <div class="status-badge">
-          <span class="pulse-dot"></span>
-          <span>LIVE MONITORING</span>
-          <span id="wsStatus" style="font-size: 0.68rem; margin-left: 4px; color: #10b981;">CONNECTED</span>
+          <div class="brand-subtitle">SECURITY OPERATIONS CENTER</div>
         </div>
       </div>
 
-      <div class="header-actions">
-        <button id="btnSimulator" class="btn btn-primary">⚔️ Adversary Simulator</button>
-        <button id="btnFirewall" class="btn btn-secondary">🛡️ Quarantine List</button>
-        <button id="btnAudioToggle" class="btn btn-secondary">🔇 Sound: OFF</button>
-        <a href="/docs" target="_blank" class="btn btn-secondary" style="text-decoration: none;">📖 API Docs</a>
+      <nav class="primary-nav" aria-label="Primary navigation">
+        <a class="nav-link active" href="#dashboard">Dashboard</a>
+        <a class="nav-link" href="#threats">Threats</a>
+        <a class="nav-link" href="#endpoints">Endpoints</a>
+        <a class="nav-link" href="#cloud">Cloud</a>
+        <a class="nav-link" href="#network">Network</a>
+        <a class="nav-link" href="#intelligence">Intelligence</a>
+        <a class="nav-link" href="#ai">AI Analyst</a>
+        <a class="nav-link" href="#incidents">Incidents</a>
+        <a class="nav-link" href="#reports">Reports</a>
+        <a class="nav-link" href="#settings">Settings</a>
+      </nav>
+
+      <div class="header-utility">
+        <div class="connection-status">
+          <span class="pulse-dot"></span>
+          <span id="wsStatus" role="status">CONNECTING</span>
+        </div>
+        <button class="notification-indicator" type="button" aria-label="Active incidents" title="Active incidents">
+          <span aria-hidden="true">♢</span>
+          <span id="notificationCount" class="notification-count">—</span>
+        </button>
+        <div class="clock-block">
+          <time id="dashboardClock">--:--:--</time>
+          <span>UTC</span>
+        </div>
+        <div class="profile-chip" aria-label="Current session context">
+          <span id="profileAvatar" class="profile-avatar" aria-hidden="true">--</span>
+          <span><strong id="profileName">Loading session</strong><small id="profileContext">Server session context</small></span>
+        </div>
+      </div>
+
+      <div class="header-actions" aria-label="Security operations">
+        <button id="btnAiAnalyst" class="btn btn-primary" onclick="openAiModal()">AI Analyst</button>
+        <button id="btnEndpoints" class="btn btn-secondary" onclick="openEndpointsModal()">Endpoints</button>
+        <button id="btnReports" class="btn btn-secondary" onclick="openReportsModal()">Reports</button>
+        <button id="btnSimulator" class="btn btn-primary">Simulator</button>
+        <button id="btnFirewall" class="btn btn-secondary">Quarantine</button>
+        <button id="btnAudioToggle" class="btn btn-secondary">Sound: OFF</button>
+        <a href="/docs" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">API Docs</a>
       </div>
     </header>
 
-    <section class="kpi-strip">
-      <div class="kpi-card">
-        <div class="kpi-label">Total Ingested Events</div>
-        <div id="metricTotalEvents" class="kpi-value">0</div>
-        <div class="kpi-subtext">Real-time syslog &amp; HTTP telemetry</div>
-      </div>
-      <div class="kpi-card warning">
-        <div class="kpi-label">Active Incidents</div>
-        <div id="metricActiveIncidents" class="kpi-value">0</div>
-        <div class="kpi-subtext">Requiring SOC triage &amp; review</div>
-      </div>
-      <div class="kpi-card critical">
-        <div class="kpi-label">Critical Incidents</div>
-        <div id="metricCritical" class="kpi-value">0</div>
-        <div class="kpi-subtext">High-confidence threat correlations</div>
-      </div>
-      <div class="kpi-card success">
-        <div class="kpi-label">Quarantined IPs</div>
-        <div id="metricBlockedIPs" class="kpi-value">0</div>
-        <div class="kpi-subtext">Automated firewall active containment</div>
-      </div>
-    </section>
+    <main id="dashboard" class="dashboard-shell">
+      <section class="soc-grid" aria-label="Security operations dashboard">
+        <aside class="soc-column left-column" aria-label="Threat monitoring">
+          <section id="threats" class="panel threat-overview">
+            <div class="panel-header">
+              <div><div class="panel-title">Threat Overview</div><div class="panel-kicker">Live backend metrics</div></div>
+              <span id="metricsStatus" class="panel-live metrics-loading"><i></i><span id="metricsStatusText">LOADING</span></span>
+            </div>
+            <div class="panel-body">
+              <div class="overview-metrics">
+                <div class="overview-metric"><span>Total events</span><strong id="metricTotalEvents">—</strong></div>
+                <div class="overview-metric"><span>Active incidents</span><strong id="metricActiveIncidents">—</strong></div>
+                <div class="overview-metric severity-critical"><span>Critical incidents</span><strong id="metricCritical">—</strong></div>
+                <div class="overview-metric"><span>Blocked IPs</span><strong id="metricBlockedIPs">—</strong></div>
+              </div>
+              <div class="trend-heading"><span>Recent event volume</span><span id="trendCaption">Latest events</span></div>
+              <div id="threatTrend" class="trend-chart" role="img" aria-label="Recent event volume chart">
+                <span class="empty-state">Waiting for event data…</span>
+              </div>
+            </div>
+          </section>
 
-    <section class="dashboard-grid">
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <span>🌐 Global Threat Origin &amp; Attack Vector Map</span>
-          </div>
-          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-cyan);">
-            Real-time GeoIP Telemetry
-          </div>
-        </div>
-        <div class="panel-body" style="padding: 10px;">
-          <div id="threatMap"></div>
-        </div>
-      </div>
+          <section class="panel active-threats">
+            <div class="panel-header">
+              <div><div class="panel-title">Active Threats</div><div class="panel-kicker">Severity across active incidents</div></div>
+            </div>
+            <div class="panel-body severity-layout">
+              <div id="severityChart" class="severity-chart" role="img" aria-label="Active incident severity distribution">
+                <span id="severityTotal">—</span><small>ACTIVE</small>
+              </div>
+              <div id="severityLegend" class="severity-legend">
+                <span class="empty-state">Loading incident data…</span>
+              </div>
+            </div>
+          </section>
 
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <span>🎯 MITRE ATT&amp;CK Tactics</span>
+          <section class="panel feed-panel">
+            <div class="panel-header">
+              <div><div class="panel-title">Threat Activity Feed</div><div class="panel-kicker">Real security events</div></div>
+              <span class="feed-source">WEBSOCKET</span>
+            </div>
+            <div class="panel-body compact-body">
+              <div id="terminalLogs" class="terminal-window">
+                <div class="empty-state">Waiting for security events…</div>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="panel map-panel" aria-label="Global threat map">
+          <div class="panel-header map-header">
+            <div><div class="panel-title">Global Threat Map</div><div class="panel-kicker">Geolocated incident telemetry</div></div>
+            <label class="map-filter">Filter
+              <select id="mapThreatFilter" aria-label="Filter map incidents by severity">
+                <option value="ALL">All threats</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+            </label>
           </div>
-          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
-            Coverage Profile
-          </div>
-        </div>
-        <div class="panel-body">
-          <div id="mitreBars" class="mitre-list">
-            <div style="color: var(--text-muted); font-size: 0.8rem; font-family: var(--font-mono); text-align: center; padding-top: 40px;">
-              Awaiting security event correlations...
+          <div class="map-frame">
+            <div id="threatMap" aria-label="Interactive map showing incidents with available geographic data"></div>
+            <div class="map-shield" aria-hidden="true">
+              <svg viewBox="0 0 32 36" focusable="false"><path d="M16 2 28 7v9c0 8-4.8 14-12 18C8.8 30 4 24 4 16V7z"/><path d="m11 18 3.2 3.2L21.5 14"/></svg>
+              <strong>AEGIS</strong><small>THREAT MONITOR</small>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
+          <div class="map-footer"><span id="mapLocationStatus">Only AbuseIPDB-geolocated incidents are mapped.</span><span id="mapMarkerCount">0 mapped</span></div>
+        </section>
 
-    <section class="lower-grid">
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <span>⚡ Live Security Event Stream</span>
-          </div>
-          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
-            WebSocket Ingestion Feed
-          </div>
-        </div>
-        <div class="panel-body" style="padding: 10px;">
-          <div id="terminalLogs" class="terminal-window">
-            <div class="terminal-line INFO">
-              <span class="term-ts">[SYSTEM]</span>
-              <span class="term-svc">aegis-core:</span>
-              <span class="term-msg">AegisSOAR Engine initialized. Ready to process security telemetry.</span>
+        <aside class="soc-column right-column" aria-label="Threat intelligence">
+          <section id="intelligence" class="panel ai-panel">
+            <div class="panel-header">
+              <div><div class="panel-title">AI Threat Analysis</div><div class="panel-kicker">Existing AI Analyst workflow</div></div>
+              <span class="ai-status">ON DEMAND</span>
             </div>
-          </div>
-        </div>
-      </div>
+            <div class="panel-body ai-panel-body">
+              <div class="ai-orb" aria-hidden="true"><span>◎</span></div>
+              <div class="ai-copy">
+                <strong>Evidence-grounded analysis</strong>
+                <p>Request analysis through the existing AI Analyst. No background detections are reported here.</p>
+                <button class="text-action" type="button" onclick="openAiModal()">Open AI Analyst <span aria-hidden="true">↗</span></button>
+              </div>
+            </div>
+          </section>
 
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <span>🚨 Incident Triage &amp; SOAR Queue</span>
-          </div>
-          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
-            Click case to investigate
-          </div>
-        </div>
-        <div class="panel-body" style="padding: 10px;">
-          <div id="incidentList" class="incident-list">
-            <div style="color: var(--text-muted); font-size: 0.8rem; font-family: var(--font-mono); text-align: center; padding-top: 40px;">
-              No open incidents detected yet.
+          <section class="panel vectors-panel">
+            <div class="panel-header">
+              <div><div class="panel-title">Attack Patterns</div><div class="panel-kicker">MITRE ATT&amp;CK tactics in incidents</div></div>
             </div>
+            <div class="panel-body"><div id="mitreBars" class="mitre-list"><div class="empty-state">Waiting for incident correlations…</div></div></div>
+          </section>
+
+          <section id="reports" class="panel compliance-panel">
+            <div class="panel-header">
+              <div><div class="panel-title">Compliance Status</div><div class="panel-kicker">Verified check results</div></div>
+            </div>
+            <div class="panel-body compliance-empty">
+              <span class="compliance-mark" aria-hidden="true">?</span>
+              <p>No verified compliance-check feed is connected.</p>
+              <button id="openComplianceReport" class="text-action" type="button">Open security reports <span aria-hidden="true">↗</span></button>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="infrastructure-grid" aria-label="Infrastructure monitoring">
+        <section id="endpoints" class="panel infrastructure-panel">
+          <div class="panel-header"><div><div class="panel-title">Endpoints</div><div class="panel-kicker">Inventory integration</div></div><span class="infra-icon">⌘</span></div>
+          <div class="panel-body infrastructure-body">
+            <div class="infra-status"><strong>Inventory details</strong><span>Open existing endpoint view</span></div>
+            <button class="text-action" type="button" onclick="openEndpointsModal()">View endpoints <span aria-hidden="true">↗</span></button>
           </div>
-        </div>
-      </div>
-    </section>
+        </section>
+        <section id="cloud" class="panel infrastructure-panel">
+          <div class="panel-header"><div><div class="panel-title">Cloud Systems</div><div class="panel-kicker">Infrastructure telemetry</div></div><span class="infra-icon">☁</span></div>
+          <div class="panel-body infrastructure-body"><div class="unavailable-state">No connected cloud inventory or protection metrics are available.</div></div>
+        </section>
+        <section id="network" class="panel infrastructure-panel">
+          <div class="panel-header"><div><div class="panel-title">Network</div><div class="panel-kicker">Network monitoring</div></div><span class="infra-icon">⌁</span></div>
+          <div class="panel-body infrastructure-body"><div class="unavailable-state">No network asset or monitoring feed is connected.</div></div>
+        </section>
+      </section>
+
+      <section class="activity-grid" aria-label="Event and incident review">
+        <section class="panel">
+          <div class="panel-header">
+            <div><div class="panel-title">Incident Triage &amp; SOAR Queue</div><div class="panel-kicker">Select a case to investigate</div></div>
+          </div>
+          <div class="panel-body compact-body">
+            <div id="incidentList" class="incident-list"><div class="empty-state">Loading incidents…</div></div>
+          </div>
+        </section>
+      </section>
+    </main>
+    <main id="workspaceView" class="workspace-view" hidden aria-live="polite"></main>
   </div>
 
   <div id="incidentModal" class="modal-overlay">
@@ -216,8 +288,64 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <div id="aiModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1rem; color: #fff;">🤖 Aegis AI Security Copilot</h3>
+        <button class="close-btn" onclick="closeModal('aiModal')">&times;</button>
+      </div>
+      <div id="aiModalBody" class="modal-body">
+        <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid var(--accent-cyan); padding: 12px; border-radius: 8px; color: var(--text-muted); font-size: 0.8rem;">
+          Aegis AI Copilot automatically evaluates real-time telemetry, correlates attack indicators, and suggests automated playbook containment options.
+        </div>
+        <div id="aiInsightsContent" style="font-family: var(--font-mono); font-size: 0.8rem; background: #050811; padding: 12px; border-radius: 8px; white-space: pre-wrap; line-height: 1.6; margin-top: 10px;">
+          Evaluating current telemetry &amp; active incident correlations...
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('aiModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="endpointsModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1rem; color: #fff;">💻 Managed Endpoints &amp; Sensor Inventory</h3>
+        <button class="close-btn" onclick="closeModal('endpointsModal')">&times;</button>
+      </div>
+      <div id="endpointsModalBody" class="modal-body">
+        <div style="color: var(--text-muted); font-size: 0.8rem;">Loading endpoint sensor status...</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('endpointsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reportsModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1rem; color: #fff;">📊 Executive Reports &amp; Compliance</h3>
+        <button class="close-btn" onclick="closeModal('reportsModal')">&times;</button>
+      </div>
+      <div id="reportsModalBody" class="modal-body">
+        <p style="color: var(--text-muted); font-size: 0.82rem;">Generate and export official SOC security posture reports and audit compliance logs.</p>
+        <div style="display: flex; gap: 12px; margin-top: 10px;">
+          <button type="button" class="btn btn-primary" onclick="downloadScopedReport()">📥 Export scoped report (CSV)</button>
+          <button class="btn btn-secondary" onclick="loadExecutiveReport()">📋 View Posture Report</button>
+        </div>
+        <div id="reportContentArea" style="margin-top: 12px; font-family: var(--font-mono); font-size: 0.78rem; background: #050811; padding: 12px; border-radius: 8px; display: none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('reportsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/leaflet.js"></script>
   <script src="/static/js/map.js"></script>
+  <script src="/static/js/workspaces.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
